@@ -1,120 +1,108 @@
-const quotes = [
-  {
-    text: "The best way to predict the future is to create it.",
-    author: "Peter Drucker",
-  },
-  {
-    text: "Do what you can, with what you have, where you are.",
-    author: "Theodore Roosevelt",
-  },
-  {
-    text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-    author: "Winston Churchill",
-  },
-  {
-    text: "It does not matter how slowly you go as long as you do not stop.",
-    author: "Confucius",
-  },
-  {
-    text: "Act as if what you do makes a difference. It does.",
-    author: "William James",
-  },
-  {
-    text: "The best way to predict the future is to create it.",
-    author: "Peter Drucker",
-  },
-  {
-    text: "Do what you can, with what you have, where you are.",
-    author: "Theodore Roosevelt",
-  },
-  {
-    text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-    author: "Winston Churchill",
-  },
-  {
-    text: "It does not matter how slowly you go as long as you do not stop.",
-    author: "Confucius",
-  },
-  {
-    text: "Act as if what you do makes a difference. It does.",
-    author: "William James",
-  },
-  {
-    text: "In the middle of every difficulty lies opportunity.",
-    author: "Albert Einstein",
-  },
-  {
-    text: "Happiness is not something ready-made. It comes from your own actions.",
-    author: "Dalai Lama",
-  },
-  {
-    text: "You miss 100% of the shots you don’t take.",
-    author: "Wayne Gretzky",
-  },
-  {
-    text: "Strive not to be a success, but rather to be of value.",
-    author: "Albert Einstein",
-  },
-  {
-    text: "The only way to do great work is to love what you do.",
-    author: "Steve Jobs",
-  },
-  { text: "Dream big and dare to fail.", author: "Norman Vaughan" },
-  {
-    text: "What lies behind us and what lies before us are tiny matters compared to what lies within us.",
-    author: "Ralph Waldo Emerson",
-  },
-  {
-    text: "Believe you can and you’re halfway there.",
-    author: "Theodore Roosevelt",
-  },
-  {
-    text: "Don’t watch the clock; do what it does. Keep going.",
-    author: "Sam Levenson",
-  },
-  {
-    text: "Everything you’ve ever wanted is on the other side of fear.",
-    author: "George Addair",
-  },
-  { text: "Fall seven times and stand up eight.", author: "Japanese Proverb" },
-  {
-    text: "You are never too old to set another goal or to dream a new dream.",
-    author: "C.S. Lewis",
-  },
-  {
-    text: "The only limit to our realization of tomorrow is our doubts of today.",
-    author: "Franklin D. Roosevelt",
-  },
-  {
-    text: "The future belongs to those who believe in the beauty of their dreams.",
-    author: "Eleanor Roosevelt",
-  },
-  {
-    text: "Do one thing every day that scares you.",
-    author: "Eleanor Roosevelt",
-  },
-  {
-    text: "Hardships often prepare ordinary people for an extraordinary destiny.",
-    author: "C.S. Lewis",
-  },
-];
+import {
+  hideFavoriteBtn,
+  showFavoriteCard,
+  toggleFavoriteCard,
+  showFavoriteBtn,
+  removeFavoriteCard,
+} from './src/handlers/favorites.js';
+import { displayCurrentQuote } from './src/handlers/currentQuote.js';
+import {
+  localStorageSetItem,
+  localStorageGetItem,
+} from './src/utils/localStorage.js';
+import { getRandomQuote } from './src/handlers/randomQuote.js';
+import { removeObjectFromArrayById } from './src/utils/array.js';
 
-let availableQuotes = [...quotes];
-// console.log(availableQuotes)
-function getUniqueQuote() {
-  if (availableQuotes.length === 0) {
-    availableQuotes = [...quotes];
+const CURRENT_QUOTE_KEY = 'currentQuote';
+const FAVORITE_QUOTES_KEY = 'favoriteQuotes';
+
+const randomQuoteBtn = document.getElementById('random-quote-btn');
+const quoteFavoriteBtn = document.getElementById('quote-favorite-btn');
+const favoritesContainer = document.getElementById('favorites-container');
+
+let currentQuote = null;
+const favoriteQuotes = [];
+
+function removeFavoriteQuote(id) {
+  // REMOVE FAVORITE QUOTE
+  if (id === currentQuote.id) {
+    // Removing from favorites current quote by clicking on the card Remove from favorites button
+    toggleCurrentQuote();
+  } else {
+    // Removing from favorites quote which is not current quote
+    // sync app state by remove favorite quote from the favorite quotes array
+    removeObjectFromArrayById(favoriteQuotes, id);
+    // Remove favorite card from UI
+    removeFavoriteCard(id);
+    // Save favorite quotes in the local storage
+    localStorageSetItem(FAVORITE_QUOTES_KEY, favoriteQuotes);
   }
-  const randomIndex = Math.floor(Math.random() * availableQuotes.length);
-  console.log(randomIndex);
-  const selectedQuote = availableQuotes.splice(randomIndex, 1)[0];
-  console.log(selectedQuote);
-  return selectedQuote;
+  // // The way to find current quote in the HTML in the other module
+  // const currentQuote = document.querySelector('[data-current-quote-id]');
+  // const currentQuoteId = currentQuote.dataset.currentQuoteId;
 }
 
-document.getElementById("new-quote").addEventListener("click", () => {
-  const { text, author } = getUniqueQuote();
+function toggleCurrentQuote() {
+  // CURRENT QUOTE UPDATE
+  // sync app state and toggle isFavorite of the current quote
+  currentQuote.isFavorite = !currentQuote.isFavorite;
+  // update UI by toggling favorite Icon (no need to display again current quote)
+  showFavoriteBtn(currentQuote.isFavorite);
+  // Save current quote in the local storage
+  localStorageSetItem(CURRENT_QUOTE_KEY, currentQuote);
 
-  document.getElementById("quote").textContent = text;
-  document.getElementById("author").textContent = `— ${author}`;
-});
+  // FAVORITE QUOTES UPDATE
+  // sync app state and update favoriteQuotes array
+  if (currentQuote.isFavorite) {
+    favoriteQuotes.push({ ...currentQuote });
+  } else {
+    removeObjectFromArrayById(favoriteQuotes, currentQuote.id);
+  }
+  // update UI by adding or removing favorite card
+  toggleFavoriteCard(currentQuote, favoritesContainer);
+  // Save favorite quotes in the local storage
+  localStorageSetItem(FAVORITE_QUOTES_KEY, favoriteQuotes);
+}
+
+function setCurrentQuote(quote) {
+  // SET CURRENT QUOTE WHEN LOADED FROM LOCAL STORAGE OR RECEIVED RANDOMLY
+  // Change app state and write copy of the quote to the current quote
+  currentQuote = { ...quote };
+  // Check if id of the current quote is among favorite quotes and set isFavorite
+  currentQuote.isFavorite = !!favoriteQuotes.find(
+    (favoriteQuote) => favoriteQuote.id === currentQuote.id
+  );
+  // Show current quote in the UI
+  displayCurrentQuote(currentQuote);
+  // Display favorite Icon and change its state
+  showFavoriteBtn(currentQuote.isFavorite);
+  // Save current quote in the local storage
+  localStorageSetItem(CURRENT_QUOTE_KEY, currentQuote);
+}
+
+hideFavoriteBtn();
+quoteFavoriteBtn.addEventListener('click', toggleCurrentQuote);
+
+// expecting new random quote {id, text, author, ...}
+randomQuoteBtn.addEventListener('click', () =>
+  setCurrentQuote(getRandomQuote())
+);
+
+function init() {
+  const favoriteQuotesFromStorage = localStorageGetItem(FAVORITE_QUOTES_KEY);
+  if (favoriteQuotesFromStorage) {
+    favoriteQuotesFromStorage.forEach((quote) => {
+      favoriteQuotes.push(quote);
+      showFavoriteCard(quote, favoritesContainer);
+    });
+  }
+
+  const currentQuoteFromStorage = localStorageGetItem(CURRENT_QUOTE_KEY);
+  if (currentQuoteFromStorage) {
+    setCurrentQuote(currentQuoteFromStorage);
+  }
+}
+
+window.addEventListener('load', init);
+
+export { quoteFavoriteBtn, removeFavoriteQuote };
